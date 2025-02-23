@@ -1,12 +1,12 @@
-# Query Library
+# SKQL Query Library
 
 ## Overview
 
-The Sekoia Query Language is used across by the Sekoia platform for both log analytics and threat hunting use-cases.
+The Sekoia Query Language (SKQL) is used across by the Sekoia platform for both security analytics and threat hunting use-cases.
 
 This repository contains both guidance and real examples of SKQL queries.
 
-## The Anatomy of a SQKL Query
+## The Anatomy of a SKQL Query
 
 A SKQL query consists of a sequence of statements connected by the **Pipe** (`|`) operator, where the output of one statement serves as the input for the next. The **Pipe** operator allows you to build complex queries from a series of simple, modular steps.
 
@@ -29,34 +29,39 @@ This query can be logically described as:
 2. `where`
 	* the `timestamp` property of an event is greater than 5 days ago `and`
 	* the `user_agent.device.name` of an event is `Mac`
-3. Limit the results to the first `100` events returned
+3. Count the number of results by the `user.name` value in the events
+4. Order the results by descending `count` (i.e. `user.name` with highest number of matching event first)
+5. Then limit the sorted results to the first `10` events
+6. Render these results as a bar chart
 
-This Query produces the following graph;
+The Query produces the following graph;
 
 ![](/assets/images/overview-bar-chart.png)
 
-The Sekoia Platform runs through a SQKL query sequentially (as described above) That is to say; the Sekoia Platform will run each line one by one until it hits the end, or you have an error.
+## SKQL Performance Considerations
+
+The Sekoia Platform runs through a SKQL query sequentially (as described above) That is to say; the Sekoia Platform will run each line one by one until it hits the end, or you have an error.
 
 It is therefore **very important** to consider the logical order of your query from performance perspective.
 
-Generally a query pipeline should take the following order (I map the query above to each part as an example);
+![](/assets/images/skql-query-flow.jpg)
 
-1. select the table containing data
+The above diagram simplifies an efficient query pipeline.
+
+Generally when writing SKQL queries you should try to order the logic as follows (I map the example SKWL query used above to demonstrate);
+
+1. select the data
 	* `events`
 2. filter the results set in the defined table
 	* `where timestamp > ago(5d) and user_agent.device.name == 'Mac'`
 3. analyse the filtered results and pivot
 	* `| aggregate count() by user.name`
 4. prepare the result set
-	* `| order by count desc | limit 100`
+	* `| order by count desc | limit 10`
 5. render the result set
 	* `| render barchart with (x=count,y=user.name)`
 
-## SQKL Quick-Start
-
-
-
-When writing SKQL Queries it good to think about the order in which you construct the logic of each piped query.
+## SKQL Quick-Start
 
 ### Time
 
@@ -190,28 +195,100 @@ events
 
 In this query all events within the last 7 days where the `user.email` does not equal `denholm.reynholm@reynholm.com` would be returned.
 
-This can be written as
+### Aggregation
 
+When a set of event is results from filtering queries (using `where`) you will often want to perform additional calculations based on the results returned.
 
 ```sql
 events
 | where timestamp > ago(7d)
-| where user.email !contains "barber"
+| aggregate count() by sekoiaio.any_asset.name
 ```
 
-### Processing Results
+Will count the number of events by `sekoiaio.any_asset.name`. It will produce an output with the following data:
 
-When a set of event is results from filtering queries (using `where`) you will often want to conduct additional processing on these results to produce an output.
+| sekoiaio.any_asset.name | count |
+| ----------------------- | ----- |
+| CSASSRV01               | 27942 |
+| CSASSRV02               | 27985 |
+| CSASSRV03               | 27985 |
+| CSASSRV04               | 27681 |
+| CSASSRV05               | 28103 |
+
+You can also sort and filter the results returned.
+
+```sql
+events
+| where timestamp > ago(7d)
+| aggregate count() by sekoiaio.any_asset.name
+| order by count desc
+| limit 5
+```
+
+Will return the top 5 events (by count of events) with a `sekoiaio.any_asset.name`.
+
+The following query achieves the same result slightly more efficiently using the `top` command:
+
+```sql
+events
+| where timestamp > ago(7d)
+| aggregate count() by sekoiaio.any_asset.name
+| top 5 by count
+```
+
+`aggregate` also allows for mean averages to be calculated on numbers:
+
+```sql
+alerts
+| where created_at > ago(7d)
+| aggregate avg(time_to_detect), avg(time_to_acknowledge), avg(time_to_respond), avg(time_to_resolve)
+```
+
+Produces results that look as follows:
+
+| avg_time_to_detect    | avg_time_to_acknowledge | avg_time_to_respond | avg_time_to_resolve   |
+| --------------------- | ----------------------- | ------------------- | --------------------- |
+| 2099.5072463768115942 | 3440.3333333333333333   | 22875.567567567568  | 3621.0468750000000000 |
+
+You will often find instances where you want to rename properties for clarity. You can use `select` to do this by passing the `new_field_name` = `old_field_name` as follows
+
+```sql
+alerts
+| where created_at > ago(7d)
+| aggregate avg(time_to_detect), avg(time_to_acknowledge), avg(time_to_respond), avg(time_to_resolve)
+| select avg_time_to_detect_seconds = avg_time_to_detect, avg_time_to_acknowledge_seconds = avg_time_to_acknowledge, avg_time_to_respond_seconds = avg_time_to_respond, avg_time_to_resolve_seconds =  avg_time_to_resolve
+```
+
+Produces the updated table:
+
+| avg_time_to_detect_seconds | avg_time_to_acknowledge_seconds | avg_time_to_respond_seconds | avg_time_to_resolve_seconds |
+| -------------------------- | ------------------------------- | --------------------------- | --------------------------- |
+| 2099.5072463768115942      | 3440.3333333333333333           | 22875.567567567568          | 3621.0468750000000000       |
+
+`select` can also be used to perform calculations. For example;
 
 
 ```sql
-alerts 
-| order by urgency desc, first_seen_at asc
-| select short_id, rule_name, urgency, first_seen_at
-| limit 100
+alerts
+| where created_at > ago(7d)
+| aggregate avg(time_to_detect)
+| select avg_time_to_detect_hours = avg_time_to_detect / 60
 ```
 
-Using t
+TODO
+
+You can also use nested aggregations. For example:
+
+```sql
+events
+| where timestamp > ago(7d)
+| aggregate count=count_distinct(user.name) by host.name
+| order by count desc
+```
+
+
+
+### Variables
 
 You can also set Variables at the start of your query using the `let` Clause. Variables are useful where values are reused in queries, or when values are modified regularly
 
@@ -223,8 +300,3 @@ events
 | where event.created > StartTime and event.created <= EndTime
 | count
 ```
-
-
-Instead of equals, we can also use contains.
-
-
