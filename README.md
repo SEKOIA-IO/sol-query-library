@@ -48,7 +48,7 @@ It is therefore **very important** to consider the logical order of your query f
 
 The above diagram simplifies an efficient query pipeline.
 
-Generally when writing SKQL queries you should try to order the logic as follows (I map the example SKWL query used above to demonstrate);
+Generally when writing SKQL queries you should try to order the logic as follows (I map the example SKQL query used above to demonstrate);
 
 1. select the data
 	* `events`
@@ -60,6 +60,16 @@ Generally when writing SKQL queries you should try to order the logic as follows
 	* `| order by count desc | limit 10`
 5. render the result set
 	* `| render barchart with (x=count,y=user.name)`
+
+## Sigma Rules vs. SKQL Rules
+
+The Sekoia Platform supports Sigma detection rules and correlation rules.
+
+One of the first questions you might have is; when do I use Sigma over SKQL?
+
+Sigma Rules best suited for perfect for detection and hunting use-cases in the Sekoia Platform. Whilst SKQL can also achieve the same type of detection logic in the queries as Sigma, Sigma Rules can be enhanced with additional contextual information, including MITRE ATT&CK and required intakes.
+
+SKQL are well suited to security reporting and analytics based use-cases. Unlike Sigma which is limited to telemetry events data to make detections, SKQL queries can request data from multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities.
 
 ## SKQL Quick-Start
 
@@ -265,38 +275,87 @@ Produces the updated table:
 | -------------------------- | ------------------------------- | --------------------------- | --------------------------- |
 | 2099.5072463768115942      | 3440.3333333333333333           | 22875.567567567568          | 3621.0468750000000000       |
 
-`select` can also be used to perform calculations. For example;
-
-
-```sql
-alerts
-| where created_at > ago(7d)
-| aggregate avg(time_to_detect)
-| select avg_time_to_detect_hours = avg_time_to_detect / 60
-```
-
-TODO
-
 You can also use nested aggregations. For example:
 
 ```sql
 events
 | where timestamp > ago(7d)
 | aggregate count=count_distinct(user.name) by host.name
+| where count >= 2
 | order by count desc
 ```
 
-
+Shows all the hosts reporting 2 or more distinct `user.name`s in events.
 
 ### Variables
 
-You can also set Variables at the start of your query using the `let` Clause. Variables are useful where values are reused in queries, or when values are modified regularly
+You can also set Variables at the start of your query using the `let` Clause. Variables are useful where values are reused in queries, or when values are modified regularly (because it makes it easier for user to change at the top of the query).
+
+```sql
+let CompanyDomain = "@reynholm.com";
+
+events
+| where timestamp > ago(7d)
+| where user.email endswith CompanyDomain
+```
+
+Above the query filter events that `endswith CompanyDomain` (`@reynholm.com`).
+
+Variables can also call functions. For example:
 
 ```sql
 let StartTime = ago(24h);
 let EndTime = now();
 
 events
-| where event.created > StartTime and event.created <= EndTime
+| where event.created >= StartTime and event.created <= EndTime
 | count
 ```
+
+Here the query counts events between `StartTime` (`ago(24h)`) and `EndTime` (`now()`).
+
+### Joins
+
+### Visualisation
+
+When preparing an output, [you can define how you want the results to appear from a range of rendering options](https://docs.sekoia.io/xdr/features/investigate/sekoia_operating_language/#render-results-in-chart).
+
+The default output is a table.
+
+You can define the rows shown in the table using the `project` functions:
+
+```sql
+events
+| where timestamp > ago(7d)
+| where user.email endswith "@reynholm.com"
+|
+| project user.email, user_agent.os.name, server.ip
+```
+
+![](/assets/images/table-viz-example.png)
+
+Bar chart:
+
+```sql
+alerts
+| aggregate AlertCount = count() by community_uuid
+| left join communities on community_uuid == uuid
+| order by AlertCount desc
+| select community.name, AlertCount
+| render barchart with (x=AlertCount,y=community.name, breakdown_by=community.name)
+```
+
+![](/assets/images/bar-chart-example.png)
+
+Line chart:
+
+```sql
+events
+| where timestamp >= ago(7d)
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| aggregate count() by sekoiaio.intake.uuid, bin(timestamp, 1d)
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| render linechart with (x=timestamp, y=count, breakdown_by=intake.name)
+```
+
+![](/assets/images/line-chart-example.png)
