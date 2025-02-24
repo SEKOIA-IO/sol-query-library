@@ -67,9 +67,9 @@ The Sekoia Platform supports Sigma detection rules and correlation rules.
 
 One of the first questions you might have is; when do I use Sigma over SKQL?
 
-Sigma Rules best suited for perfect for detection and hunting use-cases in the Sekoia Platform. Whilst SKQL can also achieve the same type of detection logic in the queries as Sigma, Sigma Rules can be enhanced with additional contextual information, including MITRE ATT&CK and required intakes.
+Sigma Rules are best suited to detection use-cases in the Sekoia Platform. Whilst SKQL can also achieve the same type of detection logic in the queries as Sigma, Sigma Rules can be enhanced with additional contextual information, including MITRE ATT&CK and required intakes.
 
-SKQL are well suited to security reporting and analytics based use-cases. Unlike Sigma which is limited to telemetry events data to make detections, SKQL queries can request data from multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities.
+SKQL are well suited to hunting, security reporting and analytics based use-cases. Unlike Sigma which is limited to live telemetry events data to make detections, SKQL queries can hunt on historic data. KSQL also has access to multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities to support reporting and analytic based queries.
 
 ## SKQL Quick-Start
 
