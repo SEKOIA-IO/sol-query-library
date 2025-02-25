@@ -61,17 +61,36 @@ Generally when writing SKQL queries you should try to order the logic as follows
 5. render the result set
 	* `| render barchart with (x=count,y=user.name)`
 
-## Sigma Rules vs. SKQL Rules
+## Rules in the Sekoia platform
 
-The Sekoia Platform supports Sigma detection rules and correlation rules.
+The Sekoia Platform supports a variety of rule types;
 
-One of the first questions you might have is; when do I use Sigma over SKQL?
-
-Sigma Rules are best suited to detection use-cases in the Sekoia Platform. Whilst SKQL can also achieve the same type of detection logic in the queries as Sigma, Sigma Rules can be enhanced with additional contextual information, including MITRE ATT&CK and required intakes.
-
-SKQL are well suited to hunting, security reporting and analytics based use-cases. Unlike Sigma which is limited to live telemetry events data to make detections, SKQL queries can hunt on historic data. KSQL also has access to multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities to support reporting and analytic based queries.
+* [IoC](https://docs.sekoia.io/xdr/features/detect/iocdetection/): With IOC detection, you can automatically identify potential threats in your past and future events by monitoring active IOCs.
+	* Best suited: wanting to detect on IoCs only.
+* [Anomaly](https://docs.sekoia.io/xdr/features/detect/anomaly/): Anomaly detection rules are based on machine learning anomaly detection features automating the analysis of time series data by creating accurate baselines of normal behaviour in your data.
+	* Best suited: detection and hunting use cases based on event behaviour
+* [Sigma Rules](https://docs.sekoia.io/xdr/features/detect/sigma/): Sigma is a generic and open format you can use to write signatures that will be applied to your event stream in real-time. Sigma Correlations allow you to add multiple Sigma Rules to a detection logic.
+	* Best suited for: detection use cases
+* [SKQL](https://docs.sekoia.io/xdr/features/investigate/sekoia_operating_language/): A powerful, pipe-based query language that can be used to interrogate multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities 
+	* Best suited for: hunting, security reporting and analytics based use-cases
 
 ## SKQL Quick-Start
+
+### Available Datasources
+
+| Data Source      | Description                                | Use Cases                                             |
+| ---------------- | ------------------------------------------ | ----------------------------------------------------- |
+| `events`         | Security events                            | Threat hunting, incident investigation, SOC reporting |
+| `eternal_events` | Security events related to alerts or cases | Extract metrics from events related to alerts/cases   |
+| `alerts`         | Security alerts and detections             | SOC monitoring, alert pattern analysis                |
+| `cases`          | Security incidents and cases               | Case management, incident correlation                 |
+| `intakes`        | Data sources                               | Data source management, volume monitoring             |
+| `entities`       | Company entities                           | Entity tracking, detailed reporting                   |
+| `communities`    | Multi-tenant communities (if applicable)   | Cross-organization analysis                           |
+
+### Gotchas
+
+* Queries cannot return more than 10,000 results.
 
 ### Time
 
@@ -275,6 +294,14 @@ Produces the updated table:
 | -------------------------- | ------------------------------- | --------------------------- | --------------------------- |
 | 2099.5072463768115942      | 3440.3333333333333333           | 22875.567567567568          | 3621.0468750000000000       |
 
+Setting field names can also achieved using the `aggregate` command;
+
+```sql
+alerts
+| where created_at > ago(7d)
+| aggregate avg_time_to_detect_seconds = avg(time_to_detect)
+```
+
 You can also use nested aggregations. For example:
 
 ```sql
@@ -316,6 +343,23 @@ Here the query counts events between `StartTime` (`ago(24h)`) and `EndTime` (`no
 
 ### Joins
 
+KSQL supports the following `join` types:
+
+* `inner` join: Returns records that have matching values in both tables
+* `left` join: Returns all records from the left table, and the matched records from the right table
+
+Take the following query demonstrating an `inner` join:
+
+```sql
+events
+| where timestamp > ago(24h)
+| limit 100
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| distinct intake.name
+```
+
+This query considers two available Datasources in the Sekoia platform `events` (left table) and `intakes` (right table). The purpose of this query is to turn the `sekoiaio.intake.uuid` (reported in the left table) into a human readable `name` set in the platform (reported in the right table). The `join` between tables is done on the matching values: `sekoiaio.intake.uuid` (reported in the left table) and `uuid` (reported in the right table), thus is an `inner` join.
+
 ### Visualisation
 
 When preparing an output, [you can define how you want the results to appear from a range of rendering options](https://docs.sekoia.io/xdr/features/investigate/sekoia_operating_language/#render-results-in-chart).
@@ -333,6 +377,29 @@ events
 ```
 
 ![](/assets/images/table-viz-example.png)
+
+Number:
+
+```sql
+alerts
+| aggregate AlertCount = count()
+| render number
+```
+
+![](/assets/images/number-example.png)
+
+Pie chart
+
+```sql
+alerts
+| aggregate AlertCount = count() by community_uuid
+| left join communities on community_uuid == uuid
+| order by AlertCount desc
+| select community.name, AlertCount
+| render piechart
+```
+
+![](/assets/images/piechart-example.png)
 
 Bar chart:
 
@@ -359,3 +426,29 @@ events
 ```
 
 ![](/assets/images/line-chart-example.png)
+
+Column chart (stacked):
+
+```sql
+events
+| where timestamp >= ago(7d)
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| aggregate count() by sekoiaio.intake.uuid, bin(timestamp, 1d)
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| render column with (x=timestamp, y=count, breakdown_by=intake.name, mode=stacked)
+```
+
+![](/assets/images/column-chart-example-stacked.png)
+
+Column chart (grouped):
+
+```sql
+events
+| where timestamp >= ago(7d)
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| aggregate count() by sekoiaio.intake.uuid, bin(timestamp, 1d)
+| inner join intakes on sekoiaio.intake.uuid == uuid
+| render columnchart with (x=timestamp, y=count, breakdown_by=intake.name, mode=grouped)
+```
+
+![](/assets/images/column-chart-example-grouped.png)
