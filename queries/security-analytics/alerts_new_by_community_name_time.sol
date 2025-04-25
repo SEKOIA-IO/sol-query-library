@@ -4,6 +4,8 @@
 // license: mit
 // tags:
 //   - mssp
+//   - multi-tenant
+//	 - linechart
 // query:
 
 let earliestTime = ago(7d);

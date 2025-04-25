@@ -4,6 +4,7 @@
 // license: mit
 // tags:
 //   - mssp
+//	 - linechart
 // query:
 
 let earliestTime = ago(24h);
