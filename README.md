@@ -1,14 +1,14 @@
-# SKQL Query Library
+# SOL Query Library
 
 ## Overview
 
-The Sekoia Query Language (SKQL) is used across by the Sekoia platform for both security analytics and threat hunting use-cases.
+The Sekoia Query Language (SOL) is used across by the Sekoia platform for both security analytics and threat hunting use-cases.
 
-This repository contains both guidance and real examples of SKQL queries.
+This repository contains both guidance and real examples of SOL queries.
 
-## The Anatomy of a SKQL Query
+## The Anatomy of a SOL Query
 
-A SKQL query consists of a sequence of statements connected by the **Pipe** (`|`) operator, where the output of one statement serves as the input for the next. The **Pipe** operator allows you to build complex queries from a series of simple, modular steps.
+A SOL query consists of a sequence of statements connected by the **Pipe** (`|`) operator, where the output of one statement serves as the input for the next. The **Pipe** operator allows you to build complex queries from a series of simple, modular steps.
 
 Queries reference different types of data held within the Sekoia platform as **Tables**. **Tables** hold **Datasources**. Each **Datasource** has defined properties. Typically, but not always, a **Table** is defined in the first line of a query
 
@@ -38,17 +38,17 @@ The Query produces the following graph;
 
 ![](/assets/images/overview-bar-chart.png)
 
-## SKQL Performance Considerations
+## SOL Performance Considerations
 
-The Sekoia Platform runs through a SKQL query sequentially (as described above) That is to say; the Sekoia Platform will run each line one by one until it hits the end, or you have an error.
+The Sekoia Platform runs through a SOL query sequentially (as described above) That is to say; the Sekoia Platform will run each line one by one until it hits the end, or you have an error.
 
 It is therefore **very important** to consider the logical order of your query from performance perspective.
 
-![](/assets/images/skql-query-flow.jpg)
+![](/assets/images/sol-query-flow.jpg)
 
 The above diagram simplifies an efficient query pipeline.
 
-Generally when writing SKQL queries you should try to order the logic as follows (I map the example SKQL query used above to demonstrate);
+Generally when writing SOL queries you should try to order the logic as follows (I map the example SOL query used above to demonstrate);
 
 1. select the data
 	* `events`
@@ -71,10 +71,10 @@ The Sekoia Platform supports a variety of rule types;
 	* Best suited: detection and hunting use cases based on event behaviour
 * [Sigma Rules](https://docs.sekoia.io/xdr/features/detect/sigma/): Sigma is a generic and open format you can use to write signatures that will be applied to your event stream in real-time. Sigma Correlations allow you to add multiple Sigma Rules to a detection logic.
 	* Best suited for: detection use cases
-* [SKQL](https://docs.sekoia.io/xdr/features/investigate/sekoia_operating_language/): A powerful, pipe-based query language that can be used to interrogate multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities 
+* [SOL](https://docs.sekoia.io/xdr/features/investigate/sekoia_operating_language/): A powerful, pipe-based query language that can be used to interrogate multiple Datasources across the Sekoia platform including telemetry events, alerts, cases, intakes and communities 
 	* Best suited for: hunting, security reporting and analytics based use-cases
 
-## SKQL Quick-Start
+## SOL Quick-Start
 
 ### Available Datasources
 
@@ -94,7 +94,7 @@ The Sekoia Platform supports a variety of rule types;
 
 ### Time
 
-The Sekoia Platform and SKQL are highly optimised for time filters.
+The Sekoia Platform and SOL are highly optimised for time filters.
 
 Therefore, if you know the time period of data you want to search, you should filter the time range straight away.
 
@@ -118,7 +118,7 @@ events
 
 Retrieving a user email in potentially years of logs, and then filtering the results to only include those where the email has been seen in the last 7 days.
 
-SKQL has many options for querying particular time periods:
+SOL has many options for querying particular time periods:
 
 * Days: e.g. 7 days `ago(7d)`
 * Hours: e.g. 7 hours `ago(7h)`
@@ -126,7 +126,7 @@ SKQL has many options for querying particular time periods:
 * Seconds: e.g. 7 seconds `ago(7s)`
 * Now: e.g. time of query execution `now()`
 
-Time ranges can also be specified in SKQL:
+Time ranges can also be specified in SOL:
 
 ```sql
 events
