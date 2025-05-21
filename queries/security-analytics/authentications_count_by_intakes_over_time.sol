@@ -4,7 +4,7 @@
 // license: mit
 // tags:
 //   - authentications
-//	 - linechart
+//   - linechart
 // query:
 
 events

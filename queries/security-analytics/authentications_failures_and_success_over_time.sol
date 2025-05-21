@@ -4,7 +4,7 @@
 // license: mit
 // tags:
 //   - authentications
-//	 - columnchart
+//   - columnchart
 // query:
 
 let authentication_labels = {"failure": "Failed login", "success": "Success login"};

@@ -4,7 +4,7 @@
 // license: mit
 // tags:
 //   - authentications
-//	 - barchart
+//   - barchart
 // query:
 
 let host_assets_uuids = assets
